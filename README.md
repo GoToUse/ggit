@@ -1,6 +1,8 @@
 # ggit
 
-目前只支持unix系统，克隆该代码，并 `bash` 执行 `install.sh`.
+需要Golang环境。
+
+目前只支持unix系统，克隆该代码，并 `bash` 执行 `install.sh`, .
 
 安装:
 
