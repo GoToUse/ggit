@@ -7,16 +7,27 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"path"
 	"strings"
 	"sync"
+	"time"
+)
+
+const (
+	DEFAULT_GIT_FILE      string = "/usr/bin/git"
+	DEFAULT_GITHUB_URL    string = "https://github.com/"
+	DEFAULT_GITHUB_SUFFIX string = ".git"
 )
 
 var (
-	DEFAULT_GIT_FILE   string = "/usr/bin/git"
-	DEFAULT_GITHUB_URL string = "https://github.com/"
-	DEFAULT_MIRROR_URL string = "https://github.com.cnpmjs.org/"
-	SEPERATOR          string = strings.Repeat("*", 30)
-	wg                 sync.WaitGroup
+	SEPERATOR                = strings.Repeat("*", 30)
+	wg                       sync.WaitGroup
+	DEFAULT_MIRROR_URL_ARRAY = [...]string{
+		"https://github.com.cnpmjs.org/",
+		"https://hub.fastgit.org/",
+		"https://gitclone.com/",
+		"https://github.wuyanzheshui.workers.dev/",
+	}
 )
 
 type Args []string
@@ -68,51 +79,113 @@ func getGitFile() string {
 	return DEFAULT_GIT_FILE
 }
 
-func GgitClone(args Args) {
-	var old_url, new_url, folder_name string
+func ggitClone(args Args, mirrorUrl string) error {
+	var oldUrl, newUrl, folderName string
 
 	for i := 2; i < len(args); i++ {
 		if strings.HasPrefix(args[i], DEFAULT_GITHUB_URL) {
-			old_url = args[i]
-			new_url = strings.ReplaceAll(old_url, DEFAULT_GITHUB_URL, DEFAULT_MIRROR_URL)
-			args[i] = new_url
-			folder_name_arr := strings.Split(old_url, "/")
-			folder_name = folder_name_arr[len(folder_name_arr)-1]
-			if strings.HasSuffix(folder_name, ".git") {
-				folder_name = strings.Split(folder_name, ".git")[0]
+			oldUrl = args[i]
+			// 特别处理
+			if strings.Contains(mirrorUrl, "https://gitclone.com/") {
+				githubCloneUrl := path.Join(mirrorUrl, "github.com") + "/"
+				newUrl = strings.ReplaceAll(oldUrl, DEFAULT_GITHUB_URL, githubCloneUrl)
+			} else {
+				newUrl = strings.ReplaceAll(oldUrl, DEFAULT_GITHUB_URL, mirrorUrl)
 			}
-			fmt.Println("Folder name:", folder_name)
+			args[i] = newUrl
+			folderNameArr := strings.Split(oldUrl, "/")
+			folderName = folderNameArr[len(folderNameArr)-1]
+			if strings.HasSuffix(folderName, ".git") {
+				folderName = strings.Split(folderName, ".git")[0]
+			}
+			fmt.Println("Folder name:", folderName)
+		} else {
+			log.Fatal("github仓库地址有误, 请检查是否符合 [https://github.com/xxx/xxx.git] 标准路径.")
 		}
 	}
 
 	args[0] = getGitFile()
 	err := RunCommand(args[0], args[1:]...)
-	if err != nil || len(new_url) == 0 || len(folder_name) == 0 {
-		panic(err)
+	if err != nil || len(newUrl) == 0 || len(folderName) == 0 {
+		retryErr := Retry(3, time.Second, func() error {
+			fErr := RunCommand(args[0], args[1:]...)
+			return fErr
+		})
+		if retryErr != nil {
+			return err
+		}
 	}
 	fmt.Println("Clone done!!!")
 
-	err = os.Chdir(folder_name)
+	err = os.Chdir(folderName)
 	if err != nil {
 		panic(err)
 	}
 
-	restoreCmd := "remote set-url origin " + old_url
+	restoreCmd := "remote set-url origin " + oldUrl
 	err = RunCommand(args[0], strings.Fields(restoreCmd)...)
 	if err != nil {
-		panic(err)
+		retryErr := Retry(3, time.Second, func() error {
+			fErr := RunCommand(args[0], args[1:]...)
+			return fErr
+		})
+		if retryErr != nil {
+			panic(err)
+		}
 	}
 
 	fmt.Println("Set remote done!!!")
+	return nil
+}
+
+func GgitClone(args Args) {
+	var initTimes int
+	for _, mirrorUrl := range DEFAULT_MIRROR_URL_ARRAY {
+		fmt.Println("Current mirror's url is: ", mirrorUrl)
+		err := ggitClone(args, mirrorUrl)
+		if err != nil {
+			initTimes += 1
+			continue
+		}
+		fmt.Println("All done!!!")
+		return
+	}
+
+	if initTimes == len(DEFAULT_MIRROR_URL_ARRAY) {
+		log.Fatal("Sorry: All mirrors are unusable.")
+	}
+}
+
+type CallBack func() error
+
+func Retry(tryTimes int, sleep time.Duration, callback CallBack) error {
+	fmt.Printf("Will attempt to retry %d times.\n", tryTimes)
+	for i := 1; i <= tryTimes; i++ {
+		err := callback()
+		if err == nil {
+			return nil
+		}
+
+		if i == tryTimes {
+			panic(fmt.Sprintf("You have reached the maximum attempts, see error info [%s]", err.Error()))
+			return err
+		}
+		time.Sleep(sleep)
+	}
+	return nil
 }
 
 func main() {
 	cmdArgs := os.Args
 	fmt.Println(cmdArgs)
 
-	if len(cmdArgs) > 2 && cmdArgs[1] == "clone" {
+	if len(cmdArgs) > 2 &&
+		cmdArgs[1] == "clone" &&
+		strings.HasSuffix(cmdArgs[2], DEFAULT_GITHUB_SUFFIX) {
 		GgitClone(cmdArgs)
+	} else if len(cmdArgs) > 3 {
+		log.Fatal("请输入[ggit clone https://github.com/xxx/xxx.git]这样的命令格式")
 	} else {
-		log.Fatal("请输入ggit clone https://github.com/xxx/xxx.git这样的命令格式")
+		log.Fatal("请输入[ggit clone https://github.com/xxx/xxx.git]这样的命令格式")
 	}
 }
