@@ -14,14 +14,14 @@ import (
 )
 
 const (
-	DEFAULT_GIT_FILE      string = "/usr/bin/git"
+	DEFAULT_GIT_PATH      string = "/usr/local/bin/git"
 	DEFAULT_GITHUB_URL    string = "https://github.com/"
 	DEFAULT_GITHUB_SUFFIX string = ".git"
 )
 
 var (
-	SEPERATOR                = strings.Repeat("*", 30)
 	wg                       sync.WaitGroup
+	SEPERATOR                = strings.Repeat("*", 30)
 	DEFAULT_MIRROR_URL_ARRAY = [...]string{
 		"https://github.com.cnpmjs.org/",
 		"https://hub.fastgit.org/",
@@ -43,6 +43,7 @@ func RunCommand(name string, arg ...string) error {
 	defer stdout.Close()
 
 	if err != nil {
+		fmt.Println("Error details:", err)
 		return err
 	}
 
@@ -60,10 +61,12 @@ func RunCommand(name string, arg ...string) error {
 	}()
 
 	if err = cmd.Start(); err != nil {
+		fmt.Println("Error details:", err)
 		return err
 	}
 
 	if err = cmd.Wait(); err != nil {
+		fmt.Println("Error details:", err)
 		return err
 	}
 
@@ -71,12 +74,24 @@ func RunCommand(name string, arg ...string) error {
 	return nil
 }
 
+func lookGitPath() string {
+	gitPath, err := exec.LookPath("git")
+	if err != nil {
+		return ""
+	}
+	return gitPath
+}
+
 func getGitFile() string {
 	file := os.Getenv("GIT")
 	if file != "" {
 		return file
 	}
-	return DEFAULT_GIT_FILE
+	gitPath := lookGitPath()
+	if gitPath == "" {
+		return DEFAULT_GIT_PATH
+	}
+	return gitPath
 }
 
 func ggitClone(args Args, mirrorUrl string) error {
