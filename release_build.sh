@@ -1,7 +1,7 @@
 #!/bin/sh
 
 mkdir "Releases"
-
+echo "Start to build the executable files for different platforms into Releases folder."
 # 【darwin/amd64】
 echo "start build darwin/amd64 ..."
 CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build  -o ./Releases/ggit-darwin-amd64 main.go

@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
+current_pwd=$(pwd ".")
+
 function registerGgit() {
   OS=$1
   lowerOS=$(echo "${OS}" | tr '[:upper:]' '[:lower:]')
-  current_pwd=$(pwd ".")
   ggit_path="${current_pwd}/main"
   CGO_ENABLED=0 GOOS=${lowerOS} GOARCH=amd64 go build main.go && ln -sf ${ggit_path} /usr/local/bin/ggit
   if [[ ! -f "${ggit_path}" ]]; then
@@ -22,12 +23,14 @@ function getOS() {
   then
     echo "I'm a macos system."
     registerGgit ${os}
-  elif [[ ${os} -eq "Linux" ]] 
+  elif [[ ${os} -eq "Linux" ]]
   then
     echo "I'm a linux system."
     registerGgit ${os}
   fi
 }
 
+# Release
+eval "bash ./release_build.sh"
 # registerGgit
 getOS

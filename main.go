@@ -193,7 +193,6 @@ func Retry(tryTimes int, sleep time.Duration, callback CallBack) error {
 func main() {
 	cmdArgs := os.Args
 	fmt.Println(cmdArgs)
-
 	if len(cmdArgs) > 2 &&
 		cmdArgs[1] == "clone" &&
 		strings.HasSuffix(cmdArgs[2], DEFAULT_GITHUB_SUFFIX) {
