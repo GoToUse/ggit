@@ -23,8 +23,8 @@ var (
 	wg                       sync.WaitGroup
 	SEPERATOR                = strings.Repeat("*", 30)
 	DEFAULT_MIRROR_URL_ARRAY = [...]string{
-		"https://github.com.cnpmjs.org/",
 		"https://hub.fastgit.org/",
+		"https://github.com.cnpmjs.org/",
 		"https://gitclone.com/",
 		"https://github.wuyanzheshui.workers.dev/",
 	}
