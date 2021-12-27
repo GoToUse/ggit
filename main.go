@@ -3,11 +3,13 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"github.com/go-ping/ping"
 	"io"
 	"log"
+	"net/url"
 	"os"
 	"os/exec"
-	"path"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -19,23 +21,31 @@ const (
 	DEFAULT_GITHUB_SUFFIX string = ".git"
 )
 
+type (
+	rttHost struct {
+		hostName string
+		avgRtt   time.Duration
+	}
+	Args []string
+	SortHost []rttHost
+)
+
 var (
 	wg                       sync.WaitGroup
-	SEPERATOR                = strings.Repeat("*", 30)
-	DEFAULT_MIRROR_URL_ARRAY = [...]string{
+	wg1                      sync.WaitGroup
+	DEFAULT_MIRROR_URL_ARRAY = []string{
 		"https://hub.fastgit.org/",
 		"https://github.com.cnpmjs.org/",
-		"https://gitclone.com/",
+		//"https://gitclone.com/",
 		"https://github.wuyanzheshui.workers.dev/",
 	}
 )
 
-type Args []string
-
-func RunCommand(name string, arg ...string) error {
-	fmt.Println("Command: ", append([]string{name}, arg...))
-	fmt.Printf("%s %s %s\n", SEPERATOR, strings.ToUpper(arg[0]), SEPERATOR)
-	cmd := exec.Command(name, arg...)
+func RunCommand(name string, args ...string) error {
+	fmt.Println("Command: ", append([]string{name}, args...))
+	seperator := center(strings.ToUpper(args[0]), 60, "*")
+	fmt.Println(seperator)
+	cmd := exec.Command(name, args...)
 
 	stdout, err := cmd.StdoutPipe()
 	cmd.Stdout = os.Stdout
@@ -97,36 +107,42 @@ func getGitFile() string {
 func ggitClone(args Args, mirrorUrl string) error {
 	var oldUrl, newUrl, folderName string
 
-	for i := 2; i < len(args); i++ {
-		if strings.HasPrefix(args[i], DEFAULT_GITHUB_URL) {
-			oldUrl = args[i]
-			// 特别处理
-			if strings.Contains(mirrorUrl, "https://gitclone.com/") {
-				githubCloneUrl := path.Join(mirrorUrl, "github.com") + "/"
-				newUrl = strings.ReplaceAll(oldUrl, DEFAULT_GITHUB_URL, githubCloneUrl)
-			} else {
-				newUrl = strings.ReplaceAll(oldUrl, DEFAULT_GITHUB_URL, mirrorUrl)
-			}
-			args[i] = newUrl
-			folderNameArr := strings.Split(oldUrl, "/")
-			folderName = folderNameArr[len(folderNameArr)-1]
-			if strings.HasSuffix(folderName, ".git") {
-				folderName = strings.Split(folderName, ".git")[0]
-			}
-			fmt.Println("Folder name:", folderName)
-		} else {
-			log.Fatal("github仓库地址有误, 请检查是否符合 [https://github.com/xxx/xxx.git] 标准路径.")
+	if strings.HasPrefix(args[2], DEFAULT_GITHUB_URL) {
+		oldUrl = args[2]
+		// 特别处理
+		u, err := url.Parse(mirrorUrl)
+		if err != nil {
+			log.Panicf("%s is wrong, see details[%s]", mirrorUrl, err.Error())
 		}
+		if strings.Contains(mirrorUrl, "https://gitclone.com/") {
+			ref, _ := u.Parse("github.com")
+			githubCloneUrl := fmt.Sprintf("%s/", ref)
+			newUrl = strings.ReplaceAll(oldUrl, DEFAULT_GITHUB_URL, githubCloneUrl)
+		} else {
+			newUrl = strings.ReplaceAll(oldUrl, DEFAULT_GITHUB_URL, mirrorUrl)
+		}
+		args[2] = newUrl
+		folderNameArr := strings.Split(oldUrl, "/")
+		folderName = folderNameArr[len(folderNameArr)-1]
+		if strings.HasSuffix(folderName, ".git") {
+			folderName = strings.Split(folderName, ".git")[0]
+		}
+		fmt.Println("Folder name:", folderName)
+	} else {
+		fmt.Printf("DEBUG: args[2]: %s\n", args[2])
+		log.Fatal("github仓库地址有误, 请检查是否符合 [https://github.com/xxx/xxx.git] 标准路径.")
 	}
 
 	args[0] = getGitFile()
 	err := RunCommand(args[0], args[1:]...)
 	if err != nil || len(newUrl) == 0 || len(folderName) == 0 {
-		retryErr := Retry(3, time.Second, func() error {
+		retryErr := Retry(3, 3 * time.Second, func() error {
 			fErr := RunCommand(args[0], args[1:]...)
 			return fErr
 		})
 		if retryErr != nil {
+			// 如果当前url不能正常工作，那么初始化args[2]的值
+			args[2] = oldUrl
 			return err
 		}
 	}
@@ -140,11 +156,14 @@ func ggitClone(args Args, mirrorUrl string) error {
 	restoreCmd := "remote set-url origin " + oldUrl
 	err = RunCommand(args[0], strings.Fields(restoreCmd)...)
 	if err != nil {
-		retryErr := Retry(3, time.Second, func() error {
+		retryErr := Retry(3, 3 * time.Second, func() error {
 			fErr := RunCommand(args[0], args[1:]...)
 			return fErr
 		})
 		if retryErr != nil {
+			// 如果当前url不能正常工作，那么初始化args[2]的值
+			args[2] = oldUrl
+			// TODO: if error, delete this folder.
 			panic(err)
 		}
 	}
@@ -153,10 +172,56 @@ func ggitClone(args Args, mirrorUrl string) error {
 	return nil
 }
 
+func retrieveHost(originURL string) string {
+	orgURLList := strings.Split(originURL, "//")
+	host := orgURLList[1]
+	return strings.TrimSuffix(host, "/")
+}
+
+func sortHost(originURLList []string) SortHost {
+	seperator := center("Sort by ping rtt value", 60, "#")
+	fmt.Println(seperator)
+	var rttMapList SortHost
+	for _, v := range originURLList {
+		wg1.Add(1)
+		go func(v string) {
+			defer wg1.Done()
+			host := retrieveHost(v)
+			pinger, err := ping.NewPinger(host)
+			if err != nil {
+				panic(err)
+			}
+
+			fmt.Printf("PING %s (%s)\n", pinger.Addr(), pinger.IPAddr())
+			pinger.Count = 5
+			pinger.Interval = 500 * time.Millisecond
+			pinger.Timeout = 2 * time.Second
+			err = pinger.Run()
+			stats := pinger.Statistics()
+			if err != nil {
+				panic(err)
+			}
+			rttMapList = append(rttMapList, struct {
+				hostName string
+				avgRtt   time.Duration
+			}{hostName: v, avgRtt: stats.AvgRtt})
+			fmt.Printf("%s done!\n", pinger.Addr())
+		}(v)
+	}
+	wg1.Wait()
+	sort.SliceStable(rttMapList, func(i, j int) bool {
+		return rttMapList[i].avgRtt < rttMapList[j].avgRtt
+	})
+	fmt.Printf("Sorted list: %v\n", rttMapList)
+	return rttMapList
+}
+
 func GgitClone(args Args) {
 	var initTimes int
-	for _, mirrorUrl := range DEFAULT_MIRROR_URL_ARRAY {
-		fmt.Println("Current mirror's url is: ", mirrorUrl)
+	sortHost := sortHost(DEFAULT_MIRROR_URL_ARRAY)
+	for _, v := range sortHost {
+		mirrorUrl := v.hostName
+		fmt.Println("# Current mirror's url is: ", mirrorUrl)
 		err := ggitClone(args, mirrorUrl)
 		if err != nil {
 			initTimes += 1
@@ -173,8 +238,11 @@ func GgitClone(args Args) {
 
 type CallBack func() error
 
+// Retry can try to re-run the task if it occurred some temp errors.
 func Retry(tryTimes int, sleep time.Duration, callback CallBack) error {
-	fmt.Printf("Will attempt to retry %d times.\n", tryTimes)
+	tipStr := fmt.Sprintf("Will attempt to retry %d times", tryTimes)
+	seperator := center(tipStr, 60, "#")
+	fmt.Println(seperator)
 	for i := 1; i <= tryTimes; i++ {
 		err := callback()
 		if err == nil {
@@ -182,12 +250,18 @@ func Retry(tryTimes int, sleep time.Duration, callback CallBack) error {
 		}
 
 		if i == tryTimes {
-			panic(fmt.Sprintf("You have reached the maximum attempts, see error info [%s]", err.Error()))
+			fmt.Println(fmt.Sprintf("Warning: You have reached the maximum attempts, see error info [%s]", err.Error()))
 			return err
 		}
 		time.Sleep(sleep)
 	}
 	return nil
+}
+
+// center like `str.center` function in python.
+func center(s string, n int, fill string) string {
+	div := n / 2
+	return strings.Repeat(fill, div) + s + strings.Repeat(fill, div)
 }
 
 func main() {
