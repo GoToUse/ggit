@@ -3,7 +3,6 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"github.com/PuerkitoBio/goquery"
 	"io"
 	"log"
 	"net/http"
@@ -16,6 +15,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/PuerkitoBio/goquery"
 	"github.com/go-ping/ping"
 )
 
@@ -87,7 +87,7 @@ func init() {
 
 func RunCommand(name string, args ...string) error {
 	fmt.Println("Command:", append([]string{name}, args...))
-	seperator := center(strings.ToUpper(args[0]), 60, "*")
+	seperator := center(strings.ToUpper(args[0]), 40, "-")
 	fmt.Println(seperator)
 	cmd := exec.Command(name, args...)
 
@@ -171,11 +171,6 @@ func ggitClone(args Args, mirrorUrl string) error {
 			newUrl = strings.ReplaceAll(oldUrl, DEFAULT_GITHUB_URL, mirrorUrl)
 		}
 		args[2] = newUrl
-		//folderNameArr := strings.Split(oldUrl, "/")
-		//folderName = folderNameArr[len(folderNameArr)-1]
-		//if strings.HasSuffix(folderName, ".git") {
-		//	folderName = strings.Split(folderName, ".git")[0]
-		//}
 		fmt.Println("Folder name:", GitRepoInit.RepoName)
 	} else {
 		fmt.Printf("DEBUG: args[2]: %s\n", args[2])
@@ -233,7 +228,7 @@ func retrieveHost(originURL string) string {
 }
 
 func sortHost(originURLList []string) SortHost {
-	seperator := center("\U0001F973 Sort By Ping RTT Value \U0001F973", 60, "#")
+	seperator := center("\U0001F973 Sort By Ping RTT Value \U0001F973", 80, "#")
 	fmt.Println(seperator)
 	var rttMapList SortHost
 	for _, v := range originURLList {
@@ -272,7 +267,7 @@ func sortHost(originURLList []string) SortHost {
 func GgitClone(args Args) {
 	var initTimes int
 	sortHostRes := sortHost(DEFAULT_MIRROR_URL_ARRAY)
-	fmt.Printf("Sorted list: %v\n", sortHostRes)
+	fmt.Printf("Sorted list: %v\n%s\n", sortHostRes, strings.Repeat("*", 80))
 	for _, v := range sortHostRes {
 		mirrorUrl := v.hostName
 		fmt.Println("# Current mirror's url is: ", mirrorUrl)
@@ -295,7 +290,7 @@ type CallBack func() error
 // Retry can try to re-run the task if it occurred some temp errors.
 func Retry(tryTimes int, sleep time.Duration, callback CallBack) error {
 	tipStr := fmt.Sprintf("✨✨✨ Will attempt to retry %d times️ ✨✨✨", tryTimes)
-	seperator := center(tipStr, 60, "#")
+	seperator := center(tipStr, 80, "#")
 	fmt.Println(seperator)
 	for i := 1; i <= tryTimes; i++ {
 		err := callback()
@@ -305,7 +300,7 @@ func Retry(tryTimes int, sleep time.Duration, callback CallBack) error {
 
 		if i == tryTimes {
 			fmt.Println(fmt.Sprintf("Warning: You have reached the maximum attempts, see error info [%s]", err.Error()))
-			fmt.Println(center("💥💥💥I'm a delimiter💥💥💥", 60, "*"))
+			fmt.Println(center("💥💥💥I'm a delimiter💥💥💥", 80, "#"))
 			return err
 		}
 		time.Sleep(sleep)
@@ -315,7 +310,8 @@ func Retry(tryTimes int, sleep time.Duration, callback CallBack) error {
 
 // center like `str.center` function in python.
 func center(s string, n int, fill string) string {
-	div := n / 2
+	sLen := len(s)
+	div := (n - sLen) / 2
 	return strings.Repeat(fill, div) + fmt.Sprintf(" %s ", s) + strings.Repeat(fill, div)
 }
 
