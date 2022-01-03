@@ -31,7 +31,7 @@ type (
 		avgRtt   time.Duration
 	}
 	SortHost []rttHost
-	Args []string
+	Args     []string
 	// GitRepoInfo git-repo struct
 	GitRepoInfo struct {
 		RawPath  string
@@ -59,29 +59,38 @@ var (
 
 func init() {
 	cmdArgs := os.Args
-	gitRepo := cmdArgs[2]
-	GitRepoInit.RawPath = gitRepo
-	argsTwoList := strings.Split(gitRepo, "/")
-	argsTwoRepo := argsTwoList[len(argsTwoList) - 1]
-	argsTwoAuthor := argsTwoList[len(argsTwoList) - 2]
-	folderName := strings.Split(argsTwoRepo, ".git")[0]
-	GitRepoInit.Author = argsTwoAuthor
-	GitRepoInit.RepoName = folderName
+	cmdArgsLength := len(cmdArgs)
+	if cmdArgsLength > 2 &&
+		cmdArgs[1] == "clone" &&
+		strings.HasSuffix(cmdArgs[2], DEFAULT_GITHUB_SUFFIX) {
+		gitRepo := cmdArgs[2]
+		GitRepoInit.RawPath = gitRepo
+		argsTwoList := strings.Split(gitRepo, "/")
+		argsTwoRepo := argsTwoList[len(argsTwoList)-1]
+		argsTwoAuthor := argsTwoList[len(argsTwoList)-2]
+		folderName := strings.Split(argsTwoRepo, ".git")[0]
+		GitRepoInit.Author = argsTwoAuthor
+		GitRepoInit.RepoName = folderName
 
-	// Exit if the folder is already a git-repo.
-	var checkRepoF CheckRepo
-	checkRepoF = GitRepoInit
-	if checkRepoF.checkIsAGitRepo() {
-		log.Fatalf(
-			"💨 %s already exists and is a git repository. Program will exit now...",
-			GitRepoInit.RepoName,
-		)
-	}
-	if checkRepoF.folderDuplicate() {
-		log.Fatalf(
-			"💨 Your current path already has a directory with the same name[%s]. Program will exit now...",
-			GitRepoInit.RepoName,
-		)
+		// Exit if the folder is already a git-repo.
+		var checkRepoF CheckRepo
+		checkRepoF = GitRepoInit
+		if checkRepoF.checkIsAGitRepo() {
+			log.Fatalf(
+				"💨 %s already exists and is a git repository. Program will exit now...",
+				GitRepoInit.RepoName,
+			)
+		}
+		if checkRepoF.folderDuplicate() {
+			log.Fatalf(
+				"💨 Your current path already has a directory with the same name[%s]. Program will exit now...",
+				GitRepoInit.RepoName,
+			)
+		}
+	} else if cmdArgsLength > 3 {
+		log.Fatal("[Error]:请输入[ggit clone https://github.com/xxx/xxx.git]这样的命令格式")
+	} else {
+		log.Fatal("[Error]:请输入[ggit clone https://github.com/xxx/xxx.git]这样的命令格式")
 	}
 }
 
@@ -180,7 +189,7 @@ func ggitClone(args Args, mirrorUrl string) error {
 	args[0] = getGitFile()
 	err := RunCommand(args[0], args[1:]...)
 	if err != nil || len(newUrl) == 0 || len(GitRepoInit.RepoName) == 0 {
-		retryErr := Retry(3, 3 * time.Second, func() error {
+		retryErr := Retry(3, 3*time.Second, func() error {
 			fErr := RunCommand(args[0], args[1:]...)
 			return fErr
 		})
@@ -202,7 +211,7 @@ func ggitClone(args Args, mirrorUrl string) error {
 	restoreCmd := "remote set-url origin " + oldUrl
 	err = RunCommand(args[0], strings.Fields(restoreCmd)...)
 	if err != nil {
-		retryErr := Retry(3, 3 * time.Second, func() error {
+		retryErr := Retry(3, 3*time.Second, func() error {
 			fErr := RunCommand(args[0], args[1:]...)
 			return fErr
 		})
@@ -391,13 +400,5 @@ func existOnGitClone(gitRepoName, gitAuthorName string) bool {
 func main() {
 	cmdArgs := os.Args
 	fmt.Println(cmdArgs)
-	if len(cmdArgs) > 2 &&
-		cmdArgs[1] == "clone" &&
-		strings.HasSuffix(cmdArgs[2], DEFAULT_GITHUB_SUFFIX) {
-		GgitClone(cmdArgs)
-	} else if len(cmdArgs) > 3 {
-		log.Fatal("请输入[ggit clone https://github.com/xxx/xxx.git]这样的命令格式")
-	} else {
-		log.Fatal("请输入[ggit clone https://github.com/xxx/xxx.git]这样的命令格式")
-	}
+	GgitClone(cmdArgs)
 }
