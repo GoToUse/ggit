@@ -3,6 +3,7 @@
   <component name="VcsDirectoryMappings">
     <mapping directory="$PROJECT_DIR$" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/bilili" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/mergestat" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/pyvm" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/retry-go" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/swag" vcs="Git" />

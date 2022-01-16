@@ -1,6 +1,6 @@
 #!/bin/sh
 
-mkdir "Releases"
+mkdir Releases
 echo "Start to build the executable files for different platforms into Releases folder."
 # 【darwin/amd64】
 echo "start build darwin/amd64 ..."
