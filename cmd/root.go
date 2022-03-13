@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"log"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -31,6 +32,18 @@ func Execute() {
 	}
 }
 
+var (
+	DefaultGitPath         string
+	DefaultGithubUrl       string
+	DefaultGithubSuffix    string
+	DefaultMirrorUrlArray = []string{}
+)
+
+var (
+	GitC GitS
+	mirrorUrlArr MirrorUrlS
+)
+
 func init() {
 	rootCmd.AddCommand(
 		cloneCmd,
@@ -38,4 +51,33 @@ func init() {
 	)
 
 	rootCmd.Flags().BoolP("version", "v", false, "Prints the version of ggit")
+
+	// Initialize the configuration data.
+	err := setConfig()
+	if err != nil {
+		log.Fatalf("init.setConfig err: %v", err)
+	}
+
+	// Assign data from the configuration file to variable.
+	DefaultMirrorUrlArray = mirrorUrlArr
+	DefaultGitPath, DefaultGithubUrl, DefaultGithubSuffix = GitC.FilePath, GitC.Website, GitC.UrlSuffix
+}
+
+func setConfig() error {
+	config, err := NewConfig()
+	if err != nil {
+		return err
+	}
+
+	err = config.ReadSection("Git", &GitC)
+	if err != nil {
+		return err
+	}
+
+	err = config.ReadSection("MirrorUrl", &mirrorUrlArr)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"runtime"
 	"sort"
 	"strings"
 	"sync"
@@ -52,7 +53,7 @@ func init() {
 
 func checkRepo(args []string) {
 	gitRepo := args[0]
-	if strings.HasSuffix(gitRepo, DEFAULT_GITHUB_SUFFIX) {
+	if strings.HasSuffix(gitRepo, DefaultGithubSuffix) {
 		GitRepoInit.RawPath = gitRepo
 		argsTwoList := strings.Split(gitRepo, "/")
 		argsTwoRepo := argsTwoList[len(argsTwoList)-1]
@@ -77,15 +78,9 @@ func checkRepo(args []string) {
 			)
 		}
 	} else {
-		log.Fatalf("[Error]: github repo url doesn't end with `%s` suffix.", DEFAULT_GITHUB_SUFFIX)
+		log.Fatalf("[Error]: github repo url doesn't end with `%s` suffix.", DefaultGithubSuffix)
 	}
 }
-
-const (
-	DEFAULT_GIT_PATH      string = "/usr/local/bin/git"
-	DEFAULT_GITHUB_URL    string = "https://github.com/"
-	DEFAULT_GITHUB_SUFFIX string = ".git"
-)
 
 type (
 	rttHost struct {
@@ -111,12 +106,6 @@ var (
 	wg                       sync.WaitGroup
 	wg1                      sync.WaitGroup
 	GitRepoInit              = new(GitRepoInfo)
-	DEFAULT_MIRROR_URL_ARRAY = []string{
-		"https://hub.fastgit.org/",
-		"https://github.com.cnpmjs.org/",
-		"https://gitclone.com/",
-		"https://github.wuyanzheshui.workers.dev/",
-	}
 )
 
 func RunCommand(name string, args ...string) error {
@@ -128,7 +117,12 @@ func RunCommand(name string, args ...string) error {
 	stdout, err := cmd.StdoutPipe()
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	defer stdout.Close()
+	defer func(stdout io.ReadCloser) {
+		err := stdout.Close()
+		if err != nil {
+			fmt.Println("Stdout err:", err)
+		}
+	}(stdout)
 
 	if err != nil {
 		fmt.Println("Error details:", err)
@@ -177,7 +171,7 @@ func getGitFile() string {
 	}
 	gitPath := lookGitPath()
 	if gitPath == "" {
-		return DEFAULT_GIT_PATH
+		return DefaultGitPath
 	}
 	return gitPath
 }
@@ -185,7 +179,7 @@ func getGitFile() string {
 func ggitClone(args Args, mirrorUrl string) error {
 	var oldUrl, newUrl string
 
-	if strings.HasPrefix(args[2], DEFAULT_GITHUB_URL) {
+	if strings.HasPrefix(args[2], DefaultGithubUrl) {
 		oldUrl = args[2]
 		// 特别处理
 		u, err := url.Parse(mirrorUrl)
@@ -197,12 +191,12 @@ func ggitClone(args Args, mirrorUrl string) error {
 			if existOnGitClone(GitRepoInit.RepoName, GitRepoInit.Author) {
 				ref, _ := u.Parse("github.com")
 				githubCloneUrl := fmt.Sprintf("%s/", ref)
-				newUrl = strings.ReplaceAll(oldUrl, DEFAULT_GITHUB_URL, githubCloneUrl)
+				newUrl = strings.ReplaceAll(oldUrl, DefaultGithubUrl, githubCloneUrl)
 			} else {
-				newUrl = strings.ReplaceAll(oldUrl, DEFAULT_GITHUB_URL, mirrorUrl)
+				newUrl = strings.ReplaceAll(oldUrl, DefaultGithubUrl, mirrorUrl)
 			}
 		} else {
-			newUrl = strings.ReplaceAll(oldUrl, DEFAULT_GITHUB_URL, mirrorUrl)
+			newUrl = strings.ReplaceAll(oldUrl, DefaultGithubUrl, mirrorUrl)
 		}
 		args[2] = newUrl
 		fmt.Println("Folder name:", GitRepoInit.RepoName)
@@ -230,7 +224,7 @@ func ggitClone(args Args, mirrorUrl string) error {
 	repoAbsPath := path.Join(cdr, GitRepoInit.RepoName)
 	err = os.Chdir(repoAbsPath)
 	if err != nil {
-		panic(err)
+		log.Fatalf("os.Chdir err: %v", err)
 	}
 
 	restoreCmd := "remote set-url origin " + oldUrl
@@ -272,7 +266,9 @@ func sortHost(originURLList []string) SortHost {
 			host := retrieveHost(v)
 			pinger, err := ping.NewPinger(host)
 			if err != nil {
-				panic(err)
+				log.Printf("ping.NewPinger err: %v", err)
+				// Terminates this goroutine
+				runtime.Goexit()
 			}
 
 			fmt.Printf("PING %s (%s)\n", pinger.Addr(), pinger.IPAddr())
@@ -282,12 +278,9 @@ func sortHost(originURLList []string) SortHost {
 			err = pinger.Run()
 			stats := pinger.Statistics()
 			if err != nil {
-				panic(err)
+				log.Fatalf("pinger.Run err: %v", err)
 			}
-			rttMapList = append(rttMapList, struct {
-				hostName string
-				avgRtt   time.Duration
-			}{hostName: v, avgRtt: stats.AvgRtt})
+			rttMapList = append(rttMapList, rttHost{hostName: v, avgRtt: stats.AvgRtt})
 			fmt.Printf("%s done!\n", pinger.Addr())
 		}(v)
 	}
@@ -300,7 +293,7 @@ func sortHost(originURLList []string) SortHost {
 
 func GgitClone(args Args) {
 	var initTimes int
-	sortHostRes := sortHost(DEFAULT_MIRROR_URL_ARRAY)
+	sortHostRes := sortHost(DefaultMirrorUrlArray)
 	fmt.Printf("Sorted list: %v\n%s\n", sortHostRes, strings.Repeat("*", 80))
 	for _, v := range sortHostRes {
 		mirrorUrl := v.hostName
@@ -314,7 +307,7 @@ func GgitClone(args Args) {
 		return
 	}
 
-	if initTimes == len(DEFAULT_MIRROR_URL_ARRAY) {
+	if initTimes == len(DefaultMirrorUrlArray) {
 		log.Fatal("Sorry: All mirrors are unusable.")
 	}
 }
@@ -380,7 +373,7 @@ func existOnGitClone(gitRepoName, gitAuthorName string) bool {
 	queryPath := fmt.Sprintf("https://www.gitclone.com/gogs/search/clonesearch?q=%s", gitRepoName)
 	res, err := http.Get(queryPath)
 	if err != nil {
-		panic(err)
+		log.Fatalf("http.Get err: %v", err)
 	}
 	defer res.Body.Close()
 	if res.StatusCode != 200 {
@@ -388,7 +381,7 @@ func existOnGitClone(gitRepoName, gitAuthorName string) bool {
 	}
 	doc, err := goquery.NewDocumentFromReader(res.Body)
 	if err != nil {
-		panic(err)
+		log.Fatalf("goquery.NewDocumentFromReader err: %v", err)
 	}
 	// cannot search the repo
 	noResult := doc.Find("p.clonesearch-noresult")
