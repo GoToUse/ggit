@@ -1,7 +1,3 @@
-/*
-Copyright © 2022 NAME HERE <EMAIL ADDRESS>
-
-*/
 package cmd
 
 import (
@@ -11,7 +7,7 @@ import (
 )
 
 const (
-	version = "ggit version: [v0.0.3]"
+	version = "ggit version: [v0.0.4]"
 )
 
 // versionCmd represents the version command

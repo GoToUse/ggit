@@ -4,6 +4,6 @@ Git:
   UrlSuffix: .git
 MirrorUrl:
   - https://hub.fastgit.org/
-  - https://github.com.cnpmjs.org/
   - https://gitclone.com/
   - https://github.wuyanzheshui.workers.dev/
+  - https://github.com.cnpmjs.org/

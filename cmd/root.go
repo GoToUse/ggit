@@ -33,14 +33,14 @@ func Execute() {
 }
 
 var (
-	DefaultGitPath         string
-	DefaultGithubUrl       string
-	DefaultGithubSuffix    string
-	DefaultMirrorUrlArray = []string{}
+	DefaultGitPath        string
+	DefaultGithubUrl      string
+	DefaultGithubSuffix   string
+	DefaultMirrorUrlArray []string
 )
 
 var (
-	GitC GitS
+	GitC         GitS
 	mirrorUrlArr MirrorUrlS
 )
 
