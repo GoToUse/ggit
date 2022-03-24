@@ -30,7 +30,16 @@ function getOS() {
   fi
 }
 
+function copyConfigFile() {
+    homeDir=${HOME}
+    configPath=${current_pwd}/configs/config.yaml
+    mkdir ${homeDir}/.ggit
+    cp ${configPath} ${homeDir}/.ggit/config.yaml
+    echo "copy done!"
+}
+
 # Release
 eval "bash ./release_build.sh"
+copyConfigFile
 # registerGgit
 getOS
