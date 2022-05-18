@@ -1,4 +1,4 @@
-module ggit
+module github.com/GoToUse/ggit
 
 go 1.17
 

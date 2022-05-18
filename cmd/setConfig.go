@@ -3,9 +3,10 @@ package cmd
 import (
 	"errors"
 	"fmt"
-	"github.com/spf13/viper"
 	"os"
 	"path/filepath"
+
+	"github.com/spf13/viper"
 )
 
 type ConfigYaml struct {
@@ -21,6 +22,7 @@ type (
 	MirrorUrlS []string
 )
 
+// NewConfig 初始化配置文件
 func NewConfig() (*ConfigYaml, error) {
 	homePath, _ := os.UserHomeDir()
 	vp := viper.New()
@@ -53,6 +55,7 @@ func NewConfig() (*ConfigYaml, error) {
 	}
 }
 
+// ReadSection 将 key 对应的配置信息写入到 v 中
 func (c *ConfigYaml) ReadSection(key string, v interface{}) error {
 	err := c.viper.UnmarshalKey(key, v)
 	if err != nil {

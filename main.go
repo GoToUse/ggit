@@ -1,6 +1,6 @@
 package main
 
-import "ggit/cmd"
+import "github.com/GoToUse/ggit/cmd"
 
 func main() {
 	cmd.Execute()

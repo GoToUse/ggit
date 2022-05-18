@@ -63,6 +63,7 @@ func init() {
 	DefaultGitPath, DefaultGithubUrl, DefaultGithubSuffix = GitC.FilePath, GitC.Website, GitC.UrlSuffix
 }
 
+// setConfig 将配置信息写入 GitC / mirrorUrlArr 中
 func setConfig() error {
 	config, err := NewConfig()
 	if err != nil {
