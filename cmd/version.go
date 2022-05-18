@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	version = "ggit version: [v0.0.4]"
+	version = "ggit version: [v0.0.5]"
 )
 
 // versionCmd represents the version command
