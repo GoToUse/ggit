@@ -47,9 +47,10 @@ var (
 func init() {
 	rootCmd.AddCommand(
 		cloneCmd,
-		versionCmd,
+		versionCmd, // 获取版本号方式一
 	)
 
+	// 获取版本号方式二
 	rootCmd.Flags().BoolP("version", "v", false, "Prints the version of ggit")
 
 	// Initialize the configuration data.

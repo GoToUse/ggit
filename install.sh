@@ -5,7 +5,7 @@ function registerGgit() {
   OS=$1
   lowerOS=$(echo "${OS}" | tr '[:upper:]' '[:lower:]')
   ggit_path="${current_pwd}/main"
-  CGO_ENABLED=0 GOOS=${lowerOS} GOARCH=amd64 go build main.go && ln -sf ${ggit_path} /usr/local/bin/ggit
+  CGO_ENABLED=0 GOOS=${lowerOS} GOARCH=amd64 go build main.go && ln -sf "${ggit_path}" /usr/local/bin/ggit
   if [[ ! -f "${ggit_path}" ]]; then
     echo "${ggit_path} does not exist."
     exit 1
@@ -33,8 +33,8 @@ function getOS() {
 function copyConfigFile() {
     homeDir=${HOME}
     configPath=${current_pwd}/configs/config.yaml
-    mkdir ${homeDir}/.ggit
-    cp ${configPath} ${homeDir}/.ggit/config.yaml
+    mkdir "${homeDir}"/.ggit
+    cp "${configPath}" "${homeDir}"/.ggit/config.yaml
     echo "copy done!"
 }
 
