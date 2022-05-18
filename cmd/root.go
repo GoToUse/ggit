@@ -47,9 +47,10 @@ var (
 func init() {
 	rootCmd.AddCommand(
 		cloneCmd,
-		versionCmd,
+		versionCmd, // 获取版本号方式一
 	)
 
+	// 获取版本号方式二
 	rootCmd.Flags().BoolP("version", "v", false, "Prints the version of ggit")
 
 	// Initialize the configuration data.
@@ -63,6 +64,7 @@ func init() {
 	DefaultGitPath, DefaultGithubUrl, DefaultGithubSuffix = GitC.FilePath, GitC.Website, GitC.UrlSuffix
 }
 
+// setConfig 将配置信息写入 GitC / mirrorUrlArr 中
 func setConfig() error {
 	config, err := NewConfig()
 	if err != nil {

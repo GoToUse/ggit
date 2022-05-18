@@ -103,9 +103,9 @@ type (
 )
 
 var (
-	wg                       sync.WaitGroup
-	wg1                      sync.WaitGroup
-	GitRepoInit              = new(GitRepoInfo)
+	wg          sync.WaitGroup
+	wg1         sync.WaitGroup
+	GitRepoInit = new(GitRepoInfo)
 )
 
 func RunCommand(name string, args ...string) error {
@@ -177,27 +177,38 @@ func getGitFile() string {
 }
 
 func ggitClone(args Args, mirrorUrl string) error {
-	var oldUrl, newUrl string
+	var oldUrl, newUrl, ref, githubCloneUrl string
 
 	if strings.HasPrefix(args[2], DefaultGithubUrl) {
 		oldUrl = args[2]
 		// 特别处理
 		u, err := url.Parse(mirrorUrl)
+
 		if err != nil {
 			log.Panicf("%s is wrong, see details[%s]", mirrorUrl, err.Error())
 		}
-		if strings.Contains(mirrorUrl, "https://gitclone.com/") {
+
+		if strings.Contains(mirrorUrl, "gitclone.com") {
 			// Check the git-repo if exists on the gitclone.com.
 			if existOnGitClone(GitRepoInit.RepoName, GitRepoInit.Author) {
-				ref, _ := u.Parse("github.com")
-				githubCloneUrl := fmt.Sprintf("%s/", ref)
+				ref = strings.Join([]string{strings.TrimSuffix(u.String(), "/"), "github.com"}, "/")
+				githubCloneUrl = fmt.Sprintf("%s/", ref)
 				newUrl = strings.ReplaceAll(oldUrl, DefaultGithubUrl, githubCloneUrl)
 			} else {
 				newUrl = strings.ReplaceAll(oldUrl, DefaultGithubUrl, mirrorUrl)
 			}
+			// 这里需要特殊处理
+			// TODO: write special configurations to config.yaml file.
+		} else if strings.Contains(mirrorUrl, "ghproxy.com") ||
+			strings.Contains(mirrorUrl, "www.github.do") {
+			ref = strings.Join([]string{strings.TrimSuffix(u.String(), "/"), "https://github.com"}, "/")
+			githubCloneUrl = fmt.Sprintf("%s/", ref)
+			newUrl = strings.ReplaceAll(oldUrl, DefaultGithubUrl, githubCloneUrl)
+			fmt.Println("debug", newUrl)
 		} else {
 			newUrl = strings.ReplaceAll(oldUrl, DefaultGithubUrl, mirrorUrl)
 		}
+
 		args[2] = newUrl
 		fmt.Println("Folder name:", GitRepoInit.RepoName)
 	} else {
