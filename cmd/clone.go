@@ -117,12 +117,6 @@ func RunCommand(name string, args ...string) error {
 	stdout, err := cmd.StdoutPipe()
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	defer func(stdout io.ReadCloser) {
-		err := stdout.Close()
-		if err != nil {
-			fmt.Println("Stdout err:", err)
-		}
-	}(stdout)
 
 	if err != nil {
 		fmt.Println("Error details:", err)
