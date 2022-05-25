@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -110,7 +111,7 @@ var (
 
 func RunCommand(name string, args ...string) error {
 	fmt.Println("Command:", append([]string{name}, args...))
-	seperator := center(strings.ToUpper(args[0]), 40, "-")
+	seperator := center(strings.ToUpper(args[0]), 40, "*")
 	fmt.Println(seperator)
 	cmd := exec.Command(name, args...)
 
@@ -254,10 +255,14 @@ func ggitClone(args Args, mirrorUrl string) error {
 	return nil
 }
 
+// retrieveHost get the host of originURL
 func retrieveHost(originURL string) string {
-	orgURLList := strings.Split(originURL, "//")
-	host := orgURLList[1]
-	return strings.TrimSuffix(host, "/")
+	URL, err := url.Parse(originURL)
+	if err != nil {
+		panic(err)
+	}
+
+	return URL.Host
 }
 
 func sortHost(originURLList []string) SortHost {
@@ -269,7 +274,13 @@ func sortHost(originURLList []string) SortHost {
 		go func(v string) {
 			defer wg1.Done()
 			host := retrieveHost(v)
-			pinger, err := ping.NewPinger(host)
+			addr, err := net.LookupCNAME(host)
+			if err != nil {
+				// Terminates this goroutine
+				runtime.Goexit()
+			}
+
+			pinger, err := ping.NewPinger(addr)
 			if err != nil {
 				log.Printf("ping.NewPinger err: %v", err)
 				// Terminates this goroutine
@@ -299,7 +310,11 @@ func sortHost(originURLList []string) SortHost {
 func GgitClone(args Args) {
 	var initTimes int
 	sortHostRes := sortHost(DefaultMirrorUrlArray)
-	fmt.Printf("Sorted list: %v\n%s\n", sortHostRes, strings.Repeat("*", 80))
+
+	fmt.Println(center("Sorted list", 80, "*"))
+	RenderTable(sortHostRes)
+	fmt.Println(strings.Repeat("*", 80))
+
 	for _, v := range sortHostRes {
 		mirrorUrl := v.hostName
 		fmt.Println("# Current mirror's url is: ", mirrorUrl)
