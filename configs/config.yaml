@@ -3,12 +3,17 @@ Git:
   Website: https://github.com/
   UrlSuffix: .git
 MirrorUrl:
-  - https://hub.fastgit.xyz/
-  - https://hub.fastgit.org/
-  - https://gitclone.com/
-  - https://github.wuyanzheshui.workers.dev/
-  - https://github.com.cnpmjs.org/
-  - https://ghproxy.com/
-  - https://hub.おうか.tw/
-  - https://hub.連接.台灣/
-  - https://www.github.do/
+  # This is a suffix will be joined after the host name.
+  none:
+    # These are host names.
+    - https://hub.fastgit.xyz/
+    - https://hub.fastgit.org/
+    - https://github.wuyanzheshui.workers.dev/
+    - https://github.com.cnpmjs.org/
+    - https://hub.おうか.tw/
+    - https://hub.連接.台灣/
+  github.com:
+    - https://gitclone.com/
+  https://github.com:
+    - https://ghproxy.com/
+    - https://www.github.do/

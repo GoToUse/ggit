@@ -32,18 +32,6 @@ func Execute() {
 	}
 }
 
-var (
-	DefaultGitPath        string
-	DefaultGithubUrl      string
-	DefaultGithubSuffix   string
-	DefaultMirrorUrlArray []string
-)
-
-var (
-	GitC         GitS
-	mirrorUrlArr MirrorUrlS
-)
-
 func init() {
 	rootCmd.AddCommand(
 		cloneCmd,
@@ -60,7 +48,7 @@ func init() {
 	}
 
 	// Assign data from the configuration file to variable.
-	DefaultMirrorUrlArray = mirrorUrlArr
+	DefaultMirrorUrlMap = mirrorUrlArr
 	DefaultGitPath, DefaultGithubUrl, DefaultGithubSuffix = GitC.FilePath, GitC.Website, GitC.UrlSuffix
 }
 

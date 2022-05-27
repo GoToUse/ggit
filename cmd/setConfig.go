@@ -13,15 +13,6 @@ type ConfigYaml struct {
 	viper *viper.Viper
 }
 
-type (
-	GitS struct {
-		FilePath  string
-		Website   string
-		UrlSuffix string
-	}
-	MirrorUrlS []string
-)
-
 // NewConfig 初始化配置文件
 func NewConfig() (*ConfigYaml, error) {
 	homePath, _ := os.UserHomeDir()
